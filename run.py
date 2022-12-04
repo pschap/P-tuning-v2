@@ -2,6 +2,8 @@ import logging
 import os
 import sys
 import numpy as np
+import torch
+import random
 from typing import Dict
 
 import datasets
@@ -36,10 +38,46 @@ def train(trainer, resume_from_checkpoint=None, last_checkpoint=None):
 
 def evaluate(trainer):
     logger.info("*** Evaluate ***")
+
+    logger.info("Model named parameters:")
+    for name, param in trainer.model.named_parameters():
+        if param.requires_grad:
+            logger.info(f"\tName: {name}")
+            logger.info(f"\tData: {param.data}")
+
+    # Save evaluation metrics of non perturbed prompt vectors
     metrics = trainer.evaluate()
 
     trainer.log_metrics("eval", metrics)
     trainer.save_metrics("eval", metrics)
+
+    # Permute prompt vectors
+    avg_accuracy = 0.0
+    eval_runs = 100
+    prompts = trainer.model.prefix_encoder.embedding.weight
+    for i in range(eval_runs):
+        trainer.model.prefix_encoder.embedding.weight = prompts[torch.randperm(torch.size()[0])]
+        metrics = trainer.evaluate()
+
+        trainer.log_metrics(f"eval_permute_{i}", metrics)
+        trainer.save_metrics("eval_permute_{i}", metrics)
+        avg_accuracy += metrics["eval_accuracy"]
+
+    logger.info(f"Average permute accuracy: {avg_accuracy}")
+
+    # Remove prompt vectors
+    avg_accuracy = 0.0
+    for i in range(eval_runs):
+        row = random.randint(0, prompts.size()[1])
+        trainer.model.prefix_encoder.embedding.weight[row, :] = torch.zeros(prompts.size()[1])
+        metrics = trainer.evaluate()
+
+        trainer.log_metrics(f"eval_remove_{i}", metrics)
+        trainer.save_metrics("eval_remove_{i}", metrics)
+        avg_accuracy += metrics["eval_accuracy"]
+
+    logger.info(f"Average remove accuracy: {avg_accuracy}")
+        
 
 def predict(trainer, predict_dataset=None):
     if predict_dataset is None:
