@@ -56,7 +56,7 @@ def evaluate(trainer):
     eval_runs = 100
     prompts = trainer.model.prefix_encoder.embedding.weight
     for i in range(eval_runs):
-        trainer.model.prefix_encoder.embedding.weight = prompts[torch.randperm(torch.size()[0])]
+        trainer.model.prefix_encoder.embedding.weight = prompts[torch.randperm(prompts.size()[0])]
         metrics = trainer.evaluate()
 
         trainer.log_metrics(f"eval_permute_{i}", metrics)
