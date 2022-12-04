@@ -56,26 +56,28 @@ def evaluate(trainer):
     eval_runs = 100
     prompts = trainer.model.prefix_encoder.embedding.weight
     for i in range(eval_runs):
-        trainer.model.prefix_encoder.embedding.weight = prompts[torch.randperm(prompts.size()[0])]
+        trainer.model.prefix_encoder.embedding.weight = torch.nn.Parameter(prompts[torch.randperm(prompts.size()[0])])
         metrics = trainer.evaluate()
 
         trainer.log_metrics(f"eval_permute_{i}", metrics)
         trainer.save_metrics("eval_permute_{i}", metrics)
         avg_accuracy += metrics["eval_accuracy"]
 
+    avg_accuracy = avg_accuracy / eval_runs
     logger.info(f"Average permute accuracy: {avg_accuracy}")
 
     # Remove prompt vectors
     avg_accuracy = 0.0
     for i in range(eval_runs):
         row = random.randint(0, prompts.size()[1])
-        trainer.model.prefix_encoder.embedding.weight[row, :] = torch.zeros(prompts.size()[1])
+        trainer.model.prefix_encoder.embedding.weight[row, :] = torch.nn.Parameter(torch.zeros(prompts.size()[1]))
         metrics = trainer.evaluate()
 
         trainer.log_metrics(f"eval_remove_{i}", metrics)
         trainer.save_metrics("eval_remove_{i}", metrics)
         avg_accuracy += metrics["eval_accuracy"]
 
+    avg_accuracy = avg_accuracy / eval_runs
     logger.info(f"Average remove accuracy: {avg_accuracy}")
         
 
@@ -173,11 +175,11 @@ if __name__ == '__main__':
             )
 
 
-    if training_args.do_train:
-        train(trainer, training_args.resume_from_checkpoint, last_checkpoint)
+    # if training_args.do_train:
+    #     train(trainer, training_args.resume_from_checkpoint, last_checkpoint)
     
-    # if training_args.do_eval:
-    #     evaluate(trainer)
+    if training_args.do_eval:
+        evaluate(trainer)
 
     # if training_args.do_predict:
     #     predict(trainer, predict_dataset)
