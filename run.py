@@ -36,8 +36,11 @@ def train(trainer, resume_from_checkpoint=None, last_checkpoint=None):
 
     trainer.log_best_metrics()
 
-def evaluate(trainer):
+def evaluate(trainer, resume_from_checkpoint=None):
     logger.info("*** Evaluate ***")
+
+    if resume_from_checkpoint is not None:
+        trainer._load_from_checkpoint(resume_from_checkpoint)
 
     logger.info("Model named parameters:")
     for name, param in trainer.model.named_parameters():
@@ -179,7 +182,7 @@ if __name__ == '__main__':
     #     train(trainer, training_args.resume_from_checkpoint, last_checkpoint)
     
     if training_args.do_eval:
-        evaluate(trainer)
+        evaluate(trainer, last_checkpoint)
 
     # if training_args.do_predict:
     #     predict(trainer, predict_dataset)
