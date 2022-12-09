@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import numpy as np
+import pandas as pd
 import torch
 import random
 from typing import Dict
@@ -70,18 +71,27 @@ def evaluate(trainer, resume_from_checkpoint=None):
     logger.info(f"Average permute accuracy: {avg_accuracy}")
 
     # Remove prompt vectors
-    avg_accuracy = 0.0
-    for i in range(eval_runs):
-        row = random.randint(0, prompts.size()[1])
-        trainer.model.prefix_encoder.embedding.weight[row, :] = torch.nn.Parameter(torch.zeros(prompts.size()[1]))
-        metrics = trainer.evaluate()
+    eval_runs = 5
+    results = np.empty((1,15))
+    results[:] = np.nan
+    for j in range(15):
+        avg_accuracy = 0.0
+        for i in range(eval_runs):
+            rows = random.sample(range(0, prompts.size()[0]), j)
+            for r in rows:
+                trainer.model.prefix_encoder.embedding.weight[r, :] = torch.nn.Parameter(torch.zeros(prompts.size()[1]))
+            metrics = trainer.evaluate()
 
-        trainer.log_metrics(f"eval_remove_{i}", metrics)
-        trainer.save_metrics("eval_remove_{i}", metrics)
-        avg_accuracy += metrics["eval_accuracy"]
+            trainer.log_metrics(f"eval_remove_{i}", metrics)
+            trainer.save_metrics("eval_remove_{i}", metrics)
+            avg_accuracy += metrics["eval_accuracy"]
 
-    avg_accuracy = avg_accuracy / eval_runs
-    logger.info(f"Average remove accuracy: {avg_accuracy}")
+        avg_accuracy = avg_accuracy / eval_runs
+        logger.info(f"Average remove accuracy: {avg_accuracy}")
+        results[0,j] = avg_accuracy
+    df = pd.DataFrame(results, columns=[str(i) for i in range(15)])
+    df = df.round(decimals=4)
+    df.to_csv("remove_result.csv", index=False) 
         
 
 def predict(trainer, predict_dataset=None):
