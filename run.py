@@ -92,6 +92,26 @@ def evaluate(trainer, resume_from_checkpoint=None):
     df = pd.DataFrame(results, columns=[str(i) for i in range(15)])
     df = df.round(decimals=4)
     df.to_csv("remove_result.csv", index=False) 
+
+    # Add noise to prompt vectors
+    eval_runs = 5
+    results = np.empty((1, 15))
+    results[:] = np.nan
+    for j in range(15):
+        avg_accuracy = 0.0
+        for i in range(eval_runs):
+            rows = random.sample(range(0, prompts.size()[0]), j)
+            for r in rows:
+                trainer.model.prefix_encoder.embedding.weight[r, :] = torch.nn.Parameter(torch.randn(prompts.size()[1]))
+            metrics = trainer.evaluate()
+
+            trainer.log_metrics(f"eval_noise_{i}", metrics)
+            trainer.save_metrics("eval_noise_{i}", metrics)
+            avg_accuracy += metrics["eval_noise"]
+
+    df = pd.DataFrame(results, columns=[str(i) for i in range(15)])
+    df = df.round(decimals=4)
+    df.to_csv("remove_result.csv", index=False) 
         
 
 def predict(trainer, predict_dataset=None):
