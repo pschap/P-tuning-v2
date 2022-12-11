@@ -71,7 +71,7 @@ def evaluate(trainer, resume_from_checkpoint=None):
     logger.info(f"Average permute accuracy: {avg_accuracy}")
 
     # Remove prompt vectors
-    eval_runs = 5
+    """ eval_runs = 5
     results = np.empty((1,15))
     results[:] = np.nan
     for j in range(15):
@@ -91,7 +91,38 @@ def evaluate(trainer, resume_from_checkpoint=None):
         results[0,j] = avg_accuracy
     df = pd.DataFrame(results, columns=[str(i) for i in range(15)])
     df = df.round(decimals=4)
-    df.to_csv("remove_result.csv", index=False) 
+    df.to_csv("remove_result.csv", index=False)  """
+
+    # Remove first 7 prompt vectors
+    trainer.model.prefix_encoder.embedding.weight[7, :] = torch.nn.Parameter(torch.zeros(7, prompts.size()[1]))
+    metrics = trainer.evaluate()
+
+    trainer.log_metrics("eval_remove_first", metrics)
+    trainer.save_metrics("eval_remove_first", metrics)
+    accuracy = metrics["eval_accuracy"]
+    logger.info(f"Remove first 7 accuracy: {accuracy}")
+
+    # Remove last 7 prompt vectors
+    trainer.model.prefix_encoder.embedding.weight[57:64, :] = torch.nn.Parameter(torch.zeros(7, prompts.size()[1]))
+
+    metrics = trainer.evaluate()
+
+    trainer.log_metrics("eval_remove_first", metrics)
+    trainer.save_metrics("eval_remove_first", metrics)
+    accuracy = metrics["eval_accuracy"]
+    logger.info(f"Remove last 7 accuracy: {accuracy}")
+
+    # Remove middle 7 prompt vectors
+    trainer.model.prefix_encoder.embedding.weight[28:35, :] = torch.nn.Parameter(torch.zeros(7, prompts.size()[1]))
+
+    metrics = trainer.evaluate()
+
+    trainer.log_metrics("eval_remove_first", metrics)
+    trainer.save_metrics("eval_remove_first", metrics)
+    accuracy = metrics["eval_accuracy"]
+    logger.info(f"Remove middle 7 accuracy: {accuracy}")
+
+
 
     # Add noise to prompt vectors
     eval_runs = 5
@@ -108,6 +139,10 @@ def evaluate(trainer, resume_from_checkpoint=None):
             trainer.log_metrics(f"eval_noise_{i}", metrics)
             trainer.save_metrics("eval_noise_{i}", metrics)
             avg_accuracy += metrics["eval_noise"]
+
+        avg_accuracy = avg_accuracy / eval_runs
+        logger.info(f"Average noise accuracy: {avg_accuracy}")
+        results[0,j] = avg_accuracy
 
     df = pd.DataFrame(results, columns=[str(i) for i in range(15)])
     df = df.round(decimals=4)
